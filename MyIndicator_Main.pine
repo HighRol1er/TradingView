@@ -45,6 +45,10 @@ fill(p1, p2, color = lead_line1 > lead_line2 ? color.new(color.green, 90) : colo
 // ============================================
 // 3. 거래량 5x, 10x
 // ============================================
+vol_group = "거래량 설정"
+vol_lookback = input.int(5000, "검증 범위 (캔들 수)", minval=1, group=vol_group)
+avg_len      = input.int(20,   "평균 거래량 길이",     minval=1, group=vol_group)
+
 // 1. 평균 거래량 계산 (최근 20개 캔들 기준)
 avgVol = ta.sma(volume, 20)
 
@@ -59,3 +63,35 @@ plotshape(is10x, style=shape.diamond, location=location.abovebar, color=color.re
 // 선택 사항: 조건 만족 시 캔들 배경색 변경
 bgcolor(is5x ? color.new(color.blue, 80) : na)
 bgcolor(is10x ? color.new(color.red, 80) : na)
+
+// ============================================
+// 4. 거래량 카운트 테이블 (우측 상단)
+// ============================================
+// 검증 범위(최근 N개 캔들) 내에서만 카운트
+var int count5x  = 0
+var int count10x = 0
+
+// 검증 범위 내 캔들에서만 누적
+inRange = (last_bar_index - bar_index) < vol_lookback
+
+if inRange
+    if is5x
+        count5x  := count5x + 1
+    if is10x
+        count10x := count10x + 1
+
+// 테이블은 마지막 바에서만 그려서 성능 최적화
+if barstate.islast
+    var table volTable = table.new(position.top_right, 2, 4, bgcolor=color.new(color.black, 20), border_width=1, border_color=color.gray)
+
+    table.cell(volTable, 0, 0, "거래량 카운트",       text_color=color.white, bgcolor=color.new(color.navy, 0), text_size=size.normal)
+    table.cell(volTable, 1, 0, "최근 " + str.tostring(vol_lookback) + "개", text_color=color.white, bgcolor=color.new(color.navy, 0), text_size=size.normal)
+
+    table.cell(volTable, 0, 1, "구분",     text_color=color.white, bgcolor=color.new(color.gray, 50), text_size=size.normal)
+    table.cell(volTable, 1, 1, "개수",     text_color=color.white, bgcolor=color.new(color.gray, 50), text_size=size.normal)
+
+    table.cell(volTable, 0, 2, "5x 이상",  text_color=color.white, bgcolor=color.new(color.blue, 30), text_size=size.normal)
+    table.cell(volTable, 1, 2, str.tostring(count5x) + " 개", text_color=color.white, bgcolor=color.new(color.blue, 30), text_size=size.normal)
+
+    table.cell(volTable, 0, 3, "10x 이상", text_color=color.white, bgcolor=color.new(color.red, 30), text_size=size.normal)
+    table.cell(volTable, 1, 3, str.tostring(count10x) + " 개", text_color=color.white, bgcolor=color.new(color.red, 30), text_size=size.normal)
