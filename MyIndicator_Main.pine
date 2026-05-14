@@ -1,0 +1,61 @@
+//@version=5
+indicator("내 통합 지표 - 메인 (MA + 일목)", shorttitle="Basic", overlay=true)
+
+// ============================================
+// 1. 이동평균선 (MA 50, 100, 200)
+// ============================================
+ma_group = "이동평균선 설정"
+ma50_len  = input.int(50,  "MA 50 길이",  group=ma_group)
+ma100_len = input.int(100, "MA 100 길이", group=ma_group)
+ma200_len = input.int(200, "MA 200 길이", group=ma_group)
+ma_type   = input.string("SMA", "MA 타입", options=["SMA", "EMA"], group=ma_group)
+
+f_ma(src, len, type) =>
+    type == "SMA" ? ta.sma(src, len) : ta.ema(src, len)
+
+ma50  = f_ma(close, ma50_len,  ma_type)
+ma100 = f_ma(close, ma100_len, ma_type)
+ma200 = f_ma(close, ma200_len, ma_type)
+
+plot(ma50,  "MA 50",  color=color.new(color.red, 0), linewidth=1)
+plot(ma100, "MA 100", color=color.new(color.orange, 0), linewidth=1)
+plot(ma200, "MA 200", color=color.new(color.yellow,    0), linewidth=1)
+
+// ============================================
+// 2. 일목균형표 (Ichimoku) - 리딩 스팬 A/B (구름대)만 표시
+// ============================================
+ichi_group  = "일목균형표 설정"
+conv_len    = input.int(9,  "전환선 길이 (계산용)",  group=ichi_group)
+base_len    = input.int(26, "기준선 길이 (계산용)",  group=ichi_group)
+lead_b_len  = input.int(52, "선행 스팬 B 길이",      group=ichi_group)
+
+donchian(len) => math.avg(ta.lowest(len), ta.highest(len))
+
+// 내부 계산 (전환선/기준선은 리딩 스팬 A 계산에 필요하므로 유지, 표시 안 함)
+conversion_line = donchian(conv_len)
+base_line       = donchian(base_len)
+lead_line1      = math.avg(conversion_line, base_line)  // 선행 스팬 A
+lead_line2      = donchian(lead_b_len)                  // 선행 스팬 B
+
+// 구름대만 표시 (리딩 스팬 A: 연한 녹색 / 리딩 스팬 B: 연한 빨강)
+p1 = plot(lead_line1, "리딩 스팬 A", color=color.new(#A6D6A8, 0), offset = base_len - 1)
+p2 = plot(lead_line2, "리딩 스팬 B", color=color.new(#EF9A9A, 0), offset = base_len - 1)
+fill(p1, p2, color = lead_line1 > lead_line2 ? color.new(color.green, 90) : color.new(color.red, 90), title="구름대 (백그라운드)")
+
+// ============================================
+// 3. 거래량 5x, 10x
+// ============================================
+// 1. 평균 거래량 계산 (최근 20개 캔들 기준)
+avgVol = ta.sma(volume, 20)
+
+// 2. 조건 설정 (현재 거래량이 평균의 5배, 10배 이상인지)
+is5x = volume > (avgVol * 5)
+is10x = volume > (avgVol * 10)
+
+// 3. 차트에 표시
+plotshape(is5x, style=shape.diamond, location=location.abovebar, color=color.blue, size=size.small, title="5x Volume")
+plotshape(is10x, style=shape.diamond, location=location.abovebar, color=color.red, size=size.small, title="10x Volume")
+
+// 선택 사항: 조건 만족 시 캔들 배경색 변경
+bgcolor(is5x ? color.new(color.blue, 80) : na)
+bgcolor(is10x ? color.new(color.red, 80) : na)
